@@ -1,89 +1,176 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sv">
 <head>
-  <meta charset="UTF-8">
-  <title>3D Phone Case Customizer</title>
+  <meta charset="UTF-8" />
+  <title>3D Phone Case Designer</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <style>
-    body { margin: 0; overflow: hidden; }
-    canvas { display: block; }
-    #upload { position: absolute; top: 10px; left: 10px; z-index: 1; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #f5f5f5;
+      font-family: sans-serif;
+    }
+
+    #upload {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 10;
+      background: white;
+      padding: 8px;
+      border-radius: 6px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    }
   </style>
 </head>
+
 <body>
-  <input type="file" id="upload" />
-  <script src="https://cdn.jsdelivr.net/npm/three@0.156.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.156.0/examples/js/loaders/GLTFLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.156.0/examples/js/controls/OrbitControls.js"></script>
-  <script>
-    let scene, camera, renderer, controls;
-    let phone, printPlane;
 
-    init();
+<input type="file" id="upload" accept="image/*" />
 
-    function init() {
-      scene = new THREE.Scene();
-      camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
-      camera.position.set(0, 1.5, 3);
+<!-- Three.js -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.156.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.156.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.156.0/examples/js/controls/OrbitControls.js"></script>
 
-      renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      document.body.appendChild(renderer.domElement);
+<script>
+/* ===============================
+   GRUNDLÄGGANDE SETUP
+================================ */
 
-      controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enablePan = false;
-      controls.minDistance = 2;
-      controls.maxDistance = 5;
+let scene, camera, renderer, controls;
+let printMesh = null;
 
-      const ambient = new THREE.AmbientLight(0xffffff, 0.8);
-      scene.add(ambient);
-      const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
-      dirLight.position.set(5,5,5);
-      scene.add(dirLight);
+init();
+animate();
 
-      const loader = new THREE.GLTFLoader();
-      loader.load('phonecase1.glb', function(gltf){
-        phone = gltf.scene;
-        scene.add(phone);
+function init() {
 
-        phone.traverse((child) => {
-          if(child.isMesh && child.material.name === "PrintMaterial"){
-            printPlane = child;
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf0f0f0);
+
+  camera = new THREE.PerspectiveCamera(
+    45,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    100
+  );
+  camera.position.set(0, 1.2, 3);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  document.body.appendChild(renderer.domElement);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enablePan = false;
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.minDistance = 2;
+  controls.maxDistance = 5;
+
+  /* ===============================
+     LJUS
+  ================================ */
+
+  const ambient = new THREE.AmbientLight(0xffffff, 0.9);
+  scene.add(ambient);
+
+  const directional = new THREE.DirectionalLight(0xffffff, 0.6);
+  directional.position.set(5, 5, 5);
+  scene.add(directional);
+
+  /* ===============================
+     LÄS IN MODELL
+  ================================ */
+
+  const loader = new THREE.GLTFLoader();
+
+  loader.load(
+    'phonecase2.glb',
+    (gltf) => {
+
+      const model = gltf.scene;
+      scene.add(model);
+
+      // Centrera modellen automatiskt
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      model.position.sub(center);
+
+      // Leta efter print-material
+      model.traverse((child) => {
+        if (child.isMesh) {
+          if (child.material && child.material.name === 'PrintMaterial') {
+            printMesh = child;
           }
-        });
-
-      }, undefined, function(error){
-        console.error(error);
+        }
       });
 
-      window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth/window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-      });
-
-      document.getElementById('upload').addEventListener('change', function(event){
-        const file = event.target.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e){
-          const texLoader = new THREE.TextureLoader();
-          texLoader.load(e.target.result, function(texture){
-            if(printPlane) {
-              printPlane.material.map = texture;
-              printPlane.material.needsUpdate = true;
-            }
-          });
-        };
-        reader.readAsDataURL(file);
-      });
-
-      animate();
+      if (!printMesh) {
+        console.warn('⚠️ PrintMaterial hittades inte i modellen.');
+      }
+    },
+    undefined,
+    (error) => {
+      console.error('❌ Kunde inte ladda GLB:', error);
     }
+  );
 
-    function animate(){
-      requestAnimationFrame(animate);
-      renderer.render(scene, camera);
-    }
-  </script>
+  window.addEventListener('resize', onWindowResize);
+}
+
+/* ===============================
+   UPLOAD AV BILD
+================================ */
+
+document.getElementById('upload').addEventListener('change', (event) => {
+
+  if (!printMesh) {
+    alert('Print-ytan är inte redo ännu.');
+    return;
+  }
+
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(e.target.result, (texture) => {
+
+      texture.flipY = false;
+      texture.colorSpace = THREE.SRGBColorSpace;
+
+      printMesh.material.map = texture;
+      printMesh.material.needsUpdate = true;
+    });
+  };
+
+  reader.readAsDataURL(file);
+});
+
+/* ===============================
+   RENDER LOOP
+================================ */
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+</script>
+
 </body>
 </html>
