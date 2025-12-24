@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <title>Design Your Case</title>
 
-  <!-- Google model-viewer -->
+  <!-- model-viewer (stabilast för mobil) -->
   <script type="module"
     src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js">
   </script>
@@ -13,23 +13,25 @@
     body {
       margin: 0;
       background: #f2f2f2;
-      font-family: sans-serif;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
     }
 
     model-viewer {
       width: 100vw;
       height: 100vh;
+      background: #f2f2f2;
     }
 
     #controls {
-      position: absolute;
-      top: 20px;
-      left: 20px;
+      position: fixed;
+      top: 16px;
+      left: 16px;
       z-index: 10;
       background: white;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      padding: 12px;
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
     }
   </style>
 </head>
@@ -37,7 +39,7 @@
 
   <!-- UI -->
   <div id="controls">
-    <input type="file" id="imageUpload" accept="image/*" />
+    <input type="file" id="imageUpload" accept="image/*">
   </div>
 
   <!-- 3D Viewer -->
@@ -52,7 +54,7 @@
     alt="3D Phone Case">
   </model-viewer>
 
-  <!-- Script -->
+  <!-- SCRIPT -->
   <script>
     const viewer = document.getElementById('viewer');
     const input = document.getElementById('imageUpload');
@@ -61,23 +63,26 @@
       const file = event.target.files[0];
       if (!file) return;
 
-      const imageURL = URL.createObjectURL(file);
+      // iOS-säker bildläsning
+      const bitmap = await createImageBitmap(file);
 
-      // Vänta tills modellen är redo
+      // Vänta tills modellen är laddad
       await viewer.updateComplete;
 
-      // Hitta materialet från Blender
+      // Hitta print-materialet
       const material = viewer.model.materials.find(
         m => m.name === 'PrintMaterial'
       );
 
       if (!material) {
-        alert('❌ Kunde inte hitta materialet "PrintMaterial". Kontrollera Blender.');
+        alert('❌ PrintMaterial hittades inte. Kontrollera Blender.');
         return;
       }
 
-      // Sätt bilden som texture
-      material.pbrMetallicRoughness.baseColorTexture.setTexture(imageURL);
+      // Skapa texture korrekt (iOS + Android)
+      const texture = viewer.createTexture(bitmap);
+
+      material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
     });
   </script>
 
