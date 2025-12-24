@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-  <meta charset="utf-8">
-  <title>3D Phone Case</title>
+  <meta charset="utf-8" />
+  <title>Design Your Case</title>
 
-  <!-- Model Viewer -->
+  <!-- Google model-viewer -->
   <script type="module"
     src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js">
   </script>
@@ -13,23 +13,73 @@
     body {
       margin: 0;
       background: #f2f2f2;
+      font-family: sans-serif;
     }
+
     model-viewer {
       width: 100vw;
       height: 100vh;
+    }
+
+    #controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     }
   </style>
 </head>
 <body>
 
-<model-viewer
-  src="phonecase2.glb"
-  alt="3D Phone Case"
-  camera-controls
-  auto-rotate
-  exposure="1"
-  shadow-intensity="1">
-</model-viewer>
+  <!-- UI -->
+  <div id="controls">
+    <input type="file" id="imageUpload" accept="image/*" />
+  </div>
+
+  <!-- 3D Viewer -->
+  <model-viewer
+    id="viewer"
+    src="phonecase2.glb"
+    camera-controls
+    disable-pan
+    touch-action="pan-y"
+    exposure="1"
+    shadow-intensity="1"
+    alt="3D Phone Case">
+  </model-viewer>
+
+  <!-- Script -->
+  <script>
+    const viewer = document.getElementById('viewer');
+    const input = document.getElementById('imageUpload');
+
+    input.addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const imageURL = URL.createObjectURL(file);
+
+      // Vänta tills modellen är redo
+      await viewer.updateComplete;
+
+      // Hitta materialet från Blender
+      const material = viewer.model.materials.find(
+        m => m.name === 'PrintMaterial'
+      );
+
+      if (!material) {
+        alert('❌ Kunde inte hitta materialet "PrintMaterial". Kontrollera Blender.');
+        return;
+      }
+
+      // Sätt bilden som texture
+      material.pbrMetallicRoughness.baseColorTexture.setTexture(imageURL);
+    });
+  </script>
 
 </body>
 </html>
