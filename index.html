@@ -24,7 +24,6 @@
   document.body.appendChild(renderer.domElement);
 
   scene.add(new THREE.AmbientLight(0xffffff, 2));
-
   const light = new THREE.DirectionalLight(0xffffff, 3);
   light.position.set(5, 5, 5);
   scene.add(light);
@@ -41,7 +40,7 @@
     (gltf) => {
       gltf.scene.scale.set(0.01, 0.01, 0.01);
       scene.add(gltf.scene);
-      console.log('✅ Modell laddad');
+      console.log('Modell laddad');
     },
     undefined,
     (err) => console.error(err)
